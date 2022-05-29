@@ -1,5 +1,11 @@
 <template>
   <div class="h-screen relative">
+    <GeoErrorModal
+      @closeGeoError="closeGeoError"
+      v-if="geoError"
+      :geoErrorMsg="geoErrorMsg"
+    />
+    <MapFeatures />
     <div id="map" class="h-full z-[1]"></div>
   </div>
 </template>
@@ -7,10 +13,12 @@
 <script>
 import leaflet from "leaflet";
 import { onMounted, ref } from "vue";
+import GeoErrorModal from "@/components/GeoErrorModal.vue";
+import MapFeatures from "@/components/MapFeatures.vue";
 
 export default {
   name: "HomeView",
-  components: {},
+  components: { GeoErrorModal, MapFeatures },
   setup() {
     let map;
     onMounted(() => {
@@ -37,17 +45,28 @@ export default {
     });
 
     const coords = ref(null);
-    const fechCoords = ref(null);
+    const fetchCoords = ref(null);
     const geoMarker = ref(null);
+    const geoError = ref(null);
+    const geoErrorMsg = ref("Testing v-bind on modal");
 
     const getGeolocation = () => {
-      fechCoords.value = true;
+      // check session storage for coords
+      // coords : 축척, 좌표
+      // sessionStorage : 브라우져를 재실행 해도 데이터가 사라지지 않음
+      if (sessionStorage.getItem("coords")) {
+        coords.value = JSON.parse(sessionStorage.getItem("coords"));
+        plotGeolocation(coords.value);
+        return;
+      }
+
+      fetchCoords.value = true;
       navigator.geolocation.getCurrentPosition(setCoords, getLocError);
     };
 
     const setCoords = (pos) => {
       // stop fetching coords
-      fechCoords.value = null;
+      fetchCoords.value = null;
 
       // set coords in session storage
       const setSessionCoords = {
@@ -61,14 +80,40 @@ export default {
       // set ref coords value
       coords.value = setSessionCoords;
 
-      plotGeolocation(coords);
+      plotGeolocation(coords.value);
     };
 
     const getLocError = (err) => {
-      console.log(err);
+      fetchCoords.value = null;
+      geoError.value = true;
+      geoErrorMsg.value = err.message;
     };
 
-    return { coords, geoMarker };
+    const plotGeolocation = (coords) => {
+      // create custom marker
+      const customMarker = leaflet.icon({
+        iconUrl: require("../assets/map-marker-red.svg"),
+        iconSize: [35, 35],
+      });
+
+      //create new marker with coords and custom icon
+      geoMarker.value = leaflet
+        .marker([coords.lat, coords.lng], {
+          icon: customMarker,
+        })
+        .addTo(map);
+
+      // set map view to current location
+      map.setView([coords.lat, coords.lng], 10);
+    };
+
+    // 에러 모달 창 닫기 함수
+    const closeGeoError = () => {
+      geoError.value = null;
+      geoErrorMsg.value = null;
+    };
+
+    return { coords, geoMarker, closeGeoError, geoError, geoErrorMsg };
   },
 };
 </script>
