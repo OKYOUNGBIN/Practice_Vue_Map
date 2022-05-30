@@ -5,7 +5,11 @@
       v-if="geoError"
       :geoErrorMsg="geoErrorMsg"
     />
-    <MapFeatures />
+    <MapFeatures
+      @getGeolocation="getGeolocation"
+      :coords="coords"
+      :fetchCoords="fetchCoords"
+    />
     <div id="map" class="h-full z-[1]"></div>
   </div>
 </template>
@@ -45,16 +49,23 @@ export default {
     });
 
     const coords = ref(null);
-    const fetchCoords = ref(null);
+    const fetchCoords = ref(true);
     const geoMarker = ref(null);
     const geoError = ref(null);
-    const geoErrorMsg = ref("Testing v-bind on modal");
+    const geoErrorMsg = ref(null);
 
     const getGeolocation = () => {
-      // check session storage for coords
-      // coords : 축척, 좌표
-      // sessionStorage : 브라우져를 재실행 해도 데이터가 사라지지 않음
+      if (coords.value) {
+        coords.value = null;
+        sessionStorage.removeItem("coords");
+        map.removeLayer(geoMarker.value);
+        return;
+      }
+
       if (sessionStorage.getItem("coords")) {
+        // check session storage for coords
+        // coords : 축척, 좌표
+        // sessionStorage : 브라우져를 재실행 해도 데이터가 사라지지 않음
         coords.value = JSON.parse(sessionStorage.getItem("coords"));
         plotGeolocation(coords.value);
         return;
@@ -113,7 +124,15 @@ export default {
       geoErrorMsg.value = null;
     };
 
-    return { coords, geoMarker, closeGeoError, geoError, geoErrorMsg };
+    return {
+      coords,
+      fetchCoords,
+      geoMarker,
+      closeGeoError,
+      geoError,
+      geoErrorMsg,
+      getGeolocation,
+    };
   },
 };
 </script>
