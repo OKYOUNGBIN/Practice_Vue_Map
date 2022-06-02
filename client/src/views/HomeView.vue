@@ -7,8 +7,11 @@
     />
     <MapFeatures
       @getGeolocation="getGeolocation"
+      @plotResult="plotResult"
+      @toggleSearchResults="toggleSearchResults"
       :coords="coords"
       :fetchCoords="fetchCoords"
+      :searchResults="searchResults"
     />
     <div id="map" class="h-full z-[1]"></div>
   </div>
@@ -27,7 +30,8 @@ export default {
     let map;
     onMounted(() => {
       // init map
-      map = leaflet.map("map").setView([28.538336, -81.379234], 10);
+      //37.499060300146226, 경도는 126.93605145118623
+      map = leaflet.map("map").setView([37.49906, 126.936051], 10);
 
       // add tile layer
       leaflet
@@ -44,6 +48,10 @@ export default {
           }
         )
         .addTo(map);
+
+      map.on("moveend", () => {
+        closeSearchResults();
+      });
 
       getGeolocation();
     });
@@ -123,7 +131,40 @@ export default {
       geoError.value = null;
       geoErrorMsg.value = null;
     };
+    const resultMarker = ref(null);
+    const plotResult = (coords) => {
+      // Check to see if resultMarker has value
+      if (resultMarker.value) {
+        map.removeLayer(resultMarker.value);
+      }
 
+      // create custom marker
+      const customMarker = leaflet.icon({
+        iconUrl: require("../assets/map-marker-blue.svg"),
+        iconSize: [35, 35],
+      });
+
+      //create new marker with coords and custom icon
+      resultMarker.value = leaflet
+        .marker([coords.coordinates[1], coords.coordinates[0]], {
+          icon: customMarker,
+        })
+        .addTo(map);
+
+      // set map view to current location
+      map.setView([coords.coordinates[1], coords.coordinates[0]], 14);
+
+      closeSearchResults();
+    };
+
+    const searchResults = ref(null);
+    const toggleSearchResults = () => {
+      searchResults.value = !searchResults.value;
+    };
+
+    const closeSearchResults = () => {
+      searchResults.value = null;
+    };
     return {
       coords,
       fetchCoords,
@@ -132,6 +173,10 @@ export default {
       geoError,
       geoErrorMsg,
       getGeolocation,
+      plotResult,
+      searchResults,
+      toggleSearchResults,
+      closeSearchResults,
     };
   },
 };
